@@ -4,13 +4,27 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Transactions;
+using NLog;
+using NLog.Config;
+using NLog.Targets;
 
 namespace SupportBank
 {
     class Program
     {
+        private static readonly ILogger logger = LogManager.GetCurrentClassLogger();
+
         static void Main(string[] args)
         {
+            var config = new LoggingConfiguration();
+            var target = new FileTarget { FileName = @"C:\Work\Logs\SupportBank.log", Layout = @"${longdate} ${level} - ${logger}: ${message}" };
+            config.AddTarget("File Logger", target);
+            config.LoggingRules.Add(new LoggingRule("*", LogLevel.Debug, target));
+            LogManager.Configuration = config;
+
+            logger.Debug("Program started");
+
             var transactions = new List<Transaction>();
             var accounts = new List<Account>();
             using (var sr = new StreamReader("C:\\Users\\dgm\\Documents\\Work\\Training\\Support Bank 2018\\Transactions2014.csv"))
@@ -90,6 +104,7 @@ namespace SupportBank
 
     internal class Transaction
     {
+        private static readonly ILogger logger = LogManager.GetCurrentClassLogger();
         public DateTime Date;
         public string From;
         public string To;
@@ -115,6 +130,7 @@ namespace SupportBank
 
     internal class Account
     {
+        private static readonly ILogger logger = LogManager.GetCurrentClassLogger();
         public string Name;
         public float Credit = 0;
 
