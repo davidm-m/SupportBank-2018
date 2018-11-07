@@ -13,7 +13,7 @@ namespace SupportBank
         {
             var transactions = new List<Transaction>();
             var accounts = new List<Account>();
-            using (var sr = new StreamReader("C:\\Users\\dgm\\Documents\\Work\\Training\\SupportBank\\Transactions2014.csv"))
+            using (var sr = new StreamReader("C:\\Users\\dgm\\Documents\\Work\\Training\\Support Bank 2018\\Transactions2014.csv"))
             {
                 sr.ReadLine(); //we shouldn't need the first line
                 string line;
@@ -28,8 +28,9 @@ namespace SupportBank
             {
                 if (accounts.Find(a => a.Name == t.From) == null)
                 {
-                    accounts.Add(new Account(t.From));
-                    accounts[accounts.Count - 1].ProcessTransaction(t);
+                    var newAccount = new Account(t.From);
+                    newAccount.ProcessTransaction(t);
+                    accounts.Add(newAccount);
                 }
                 else
                 {
@@ -38,8 +39,9 @@ namespace SupportBank
 
                 if (accounts.Find(a => a.Name == t.To) == null)
                 {
-                    accounts.Add(new Account(t.To));
-                    accounts[accounts.Count - 1].ProcessTransaction(t);
+                    var newAccount = new Account(t.To);
+                    newAccount.ProcessTransaction(t);
+                    accounts.Add(newAccount);
                 }
                 else
                 {
@@ -138,4 +140,5 @@ namespace SupportBank
             return $"Name: {Name}, credit: {Credit:0.00}";
         }
     }
+    
 }
