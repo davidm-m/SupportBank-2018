@@ -27,16 +27,49 @@ namespace SupportBank
 
             var transactions = new List<Transaction>();
             var accounts = new List<Account>();
-            using (var sr = new StreamReader("C:\\Users\\dgm\\Documents\\Work\\Training\\Support Bank 2018\\Transactions2014.csv"))
+
+            const string filename = "DodgyTransactions2015.csv";
+            logger.Debug("Opening file " + filename);
+            using (var sr = new StreamReader("C:\\Work\\Training\\SupportBank-2018\\" + filename))
             {
+                logger.Debug("File opened");
                 sr.ReadLine(); //we shouldn't need the first line
                 string line;
+                var count = 1;
                 while (((line = sr.ReadLine()) != null))
                 {
+                    count++;
                     var entries = line.Split(',');
-                    transactions.Add(new Transaction(entries[0], entries[1], entries[2], entries[3], entries[4]));
+                    if (entries.Length > 5)
+                    {
+                        Console.WriteLine("Line " + count + " of " + filename + "has more entries than expected");
+                        logger.Warn("Line " + count + " of " + filename + "has more entries than expected, tentatively reading entry anyway");
+                    }
+                    else if (entries.Length < 5)
+                    {
+                        Console.WriteLine("Line " + count + " of " + filename + "has fewer entries than expected - entry has been ignored");
+                        logger.Error("Line " + count + " of " + filename + "has fewer entries than expected, skipping entry");
+                        continue; //skip this entry as it cannot be readable
+                    }
+
+                    if (!DateTime.TryParse(entries[0], out var date))
+                    {
+                        Console.WriteLine("Improperly formatted date on line " + count + " of " + filename + " - entry has been ignored");
+                        logger.Error("Improperly formatted date on line " + count + " of " + filename + ", skipping entry");
+                        continue;
+                    }
+                    if (!float.TryParse(entries[4], out var amount))
+                    {
+                        Console.WriteLine("Improperly formatted amount on line " + count + " of " + filename + " - entry has been ignored");
+                        logger.Error("Improperly formatted amount on line " + count + " of " + filename + ", skipping entry");
+                        continue;
+                    }
+                    transactions.Add(new Transaction(date, entries[1], entries[2], entries[3], amount));
                 }
+                logger.Debug("File fully read");
             }
+
+            logger.Debug("Starting account processing");
 
             foreach (var t in transactions)
             {
@@ -63,7 +96,7 @@ namespace SupportBank
                 }
             }
 
-            //get user input
+            logger.Debug("Getting user input");
             Console.Write("Enter command: ");
             var input = Console.ReadLine();
 
@@ -72,6 +105,7 @@ namespace SupportBank
                 input = input.ToLowerInvariant().Substring(5);
                 if (input == "all")
                 {
+                    logger.Debug("Listing all accounts");
                     foreach (var a in accounts)
                     {
                         Console.WriteLine(a.ToString());
@@ -79,13 +113,16 @@ namespace SupportBank
                 }
                 else
                 {
+                    logger.Debug("Looking for transactions matching " + input);
                     var matches = transactions.Where(t => t.From.ToLowerInvariant() == input || t.To.ToLowerInvariant() == input).ToList();
                     if (!matches.Any())
                     {
+                        logger.Debug("No transactions found");
                         Console.WriteLine("No transactions with that name found.");
                     }
                     else
                     {
+                        logger.Debug(matches.Count.ToString() + "transactions found");
                         foreach (var t in matches)
                         {
                             Console.WriteLine(t.ToString());
@@ -95,10 +132,12 @@ namespace SupportBank
             }
             else
             {
+                logger.Warn("User entered null or otherwise invalid input");
                 Console.WriteLine("Invalid input.");
             }
 
             Console.ReadLine();
+            logger.Debug("Closing program");
         }
     }
 
@@ -111,15 +150,13 @@ namespace SupportBank
         public string Narrative;
         public float Amount;
 
-        public Transaction(string date, string from, string to, string narrative, string amount)
+        public Transaction(DateTime date, string from, string to, string narrative, float amount)
         {
-            var dateParsed = DateTime.Parse(date);
-            this.Date = dateParsed;
+            this.Date = date;
             this.From = from;
             this.To = to;
             this.Narrative = narrative;
-            var amountfl = float.Parse(amount);
-            this.Amount = amountfl;
+            this.Amount = amount;
         }
 
         public override string ToString()

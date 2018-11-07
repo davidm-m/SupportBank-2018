@@ -729,11 +729,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\Users\\dgm\\Documents\\Work\\Training\\Support Bank 2018\\SupportBank\\SupportBank.csproj",
+      "projectUniqueName": "C:\\Work\\Training\\SupportBank-2018\\SupportBank\\SupportBank.csproj",
       "projectName": "SupportBank",
-      "projectPath": "C:\\Users\\dgm\\Documents\\Work\\Training\\Support Bank 2018\\SupportBank\\SupportBank.csproj",
+      "projectPath": "C:\\Work\\Training\\SupportBank-2018\\SupportBank\\SupportBank.csproj",
       "packagesPath": "C:\\Users\\dgm\\.nuget\\packages\\",
-      "outputPath": "C:\\Users\\dgm\\Documents\\Work\\Training\\Support Bank 2018\\SupportBank\\obj\\",
+      "outputPath": "C:\\Work\\Training\\SupportBank-2018\\SupportBank\\obj\\",
       "projectStyle": "PackageReference",
       "fallbackFolders": [
         "C:\\Program Files\\dotnet\\sdk\\NuGetFallbackFolder"
