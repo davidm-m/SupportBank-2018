@@ -1,13 +1,10 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Transactions;
-using System.Xml;
-using Newtonsoft.Json;
 using NLog;
 using NLog.Config;
 using NLog.Targets;
@@ -41,39 +38,30 @@ namespace SupportBank
             var transactions = FileReader.ReadFile(fileName);
 
             var accounts = AccountProcessor.ProcessAccounts(transactions);
-            
+
             logger.Debug("Getting user input");
             Console.Write("Enter command: ");
             var input = Console.ReadLine();
+            var lowerInput = input.ToLowerInvariant();
+            input = TranslateInstructions(transactions, accounts, lowerInput);
 
-            if (input != null && input.ToLowerInvariant().StartsWith("list "))
+            Console.ReadLine();
+            logger.Debug("Closing program");
+        }
+
+        private static string TranslateInstructions(List<Transaction> transactions, List<Account> accounts, string input)
+        {
+            if (input != null && input.StartsWith("list "))
             {
-                input = input.ToLowerInvariant().Substring(5);
-                if (input == "all")
+                
+                if (input == "list all")
                 {
-                    logger.Debug("Listing all accounts");
-                    foreach (var a in accounts)
-                    {
-                        Console.WriteLine(a.ToString());
-                    }
+                    listAll(accounts);
                 }
                 else
                 {
-                    logger.Debug("Looking for transactions matching " + input);
-                    var matches = transactions.Where(t => t.FromAccount.ToLowerInvariant() == input || t.ToAccount.ToLowerInvariant() == input).ToList();
-                    if (!matches.Any())
-                    {
-                        logger.Debug("No transactions found");
-                        Console.WriteLine("No transactions with that name found.");
-                    }
-                    else
-                    {
-                        logger.Debug(matches.Count.ToString() + " transactions found");
-                        foreach (var t in matches)
-                        {
-                            Console.WriteLine(t.ToString());
-                        }
-                    }
+                    var accountName = input.Substring(5);
+                    ListTransactionsForAccount(transactions, accountName);
                 }
             }
             else
@@ -82,238 +70,40 @@ namespace SupportBank
                 Console.WriteLine("Invalid input.");
             }
 
-            Console.ReadLine();
-            logger.Debug("Closing program");
-        }
-    }
-
-    internal class Transaction
-    {
-        private static readonly ILogger logger = LogManager.GetCurrentClassLogger();
-        public DateTime Date;
-        public string FromAccount;
-        public string ToAccount;
-        public string Narrative;
-        public float Amount;
-
-        public Transaction(DateTime date, string from, string to, string narrative, float amount)
-        {
-            Date = date;
-            FromAccount = from;
-            ToAccount = to;
-            Narrative = narrative;
-            Amount = amount;
+            return input;
         }
 
-        public override string ToString()
+        private static void ListTransactionsForAccount(List<Transaction> transactions, string accountName)
         {
-            return $"Date: {Date:d}, from: {FromAccount}, to: {ToAccount}, narrative: {Narrative}, amount: {Amount:0.00}";
-        }
-    }
-
-    internal class Account
-    {
-        private static readonly ILogger logger = LogManager.GetCurrentClassLogger();
-        public string Name;
-        public float Credit = 0;
-
-        public Account(string name)
-        {
-            Name = name;
-        }
-
-        public void ProcessTransaction(Transaction transaction)
-        {
-            if (Name == transaction.FromAccount)
+            var matches = findTransactions(transactions, accountName);
+            if (!matches.Any())
             {
-                Credit -= transaction.Amount;
-            }
-            else if (Name == transaction.ToAccount)
-            {
-                Credit += transaction.Amount;
-            }
-        }
-
-        public override string ToString()
-        {
-            return $"Name: {Name}, credit: {Credit:0.00}";
-        }
-    }
-
-    internal static class FileReader
-    {
-        private static readonly ILogger logger = LogManager.GetCurrentClassLogger();
-
-        public static List<Transaction> ReadFile(string fileName)
-        {
-            if (fileName.EndsWith(".csv"))
-            {
-                logger.Debug("File detected as CSV");
-                return ReadCsv(fileName);
-            }
-            else if (fileName.EndsWith(".json"))
-            {
-                logger.Debug("File detected as json");
-                return ReadJson(fileName);
-            }
-            else if (fileName.EndsWith(".xml"))
-            {
-                logger.Debug("File detected as xml");
-                return ReadXml(fileName);
+                logger.Debug("No transactions found");
+                Console.WriteLine("No transactions with that name found.");
             }
             else
             {
-                logger.Error("Requested file " + fileName + " is not in a readable format");
-                return null;
-            }
-        }
-
-        public static List<Transaction> ReadCsv(string fileName)
-        {
-            var transactions = new List<Transaction>();
-            logger.Debug("Opening file " + fileName);
-            using (var sr = new StreamReader("C:\\Work\\Training\\SupportBank-2018\\" + fileName))
-            {
-                logger.Debug("File opened");
-                sr.ReadLine(); //we shouldn't need the first line
-                string line;
-                var count = 1;
-                while (((line = sr.ReadLine()) != null))
+                logger.Debug(matches.Count.ToString() + " transactions found");
+                foreach (var t in matches)
                 {
-                    count++;
-                    var entries = line.Split(',');
-                    if (entries.Length > 5)
-                    {
-                        Console.WriteLine("Line " + count + " of " + fileName + "has more entries than expected");
-                        logger.Warn("Line " + count + " of " + fileName + "has more entries than expected, tentatively reading entry anyway");
-                    }
-                    else if (entries.Length < 5)
-                    {
-                        Console.WriteLine("Line " + count + " of " + fileName + "has fewer entries than expected - entry has been ignored");
-                        logger.Error("Line " + count + " of " + fileName + "has fewer entries than expected, skipping entry");
-                        continue; //skip this entry as it cannot be readable
-                    }
-
-                    if (!DateTime.TryParse(entries[0], out var date))
-                    {
-                        Console.WriteLine("Improperly formatted date on line " + count + " of " + fileName + " - entry has been ignored");
-                        logger.Error("Improperly formatted date on line " + count + " of " + fileName + ", skipping entry");
-                        continue;
-                    }
-                    if (!float.TryParse(entries[4], out var amount))
-                    {
-                        Console.WriteLine("Improperly formatted amount on line " + count + " of " + fileName + " - entry has been ignored");
-                        logger.Error("Improperly formatted amount on line " + count + " of " + fileName + ", skipping entry");
-                        continue;
-                    }
-                    transactions.Add(new Transaction(date, entries[1], entries[2], entries[3], amount));
+                    Console.WriteLine(t.ToString());
                 }
-                logger.Debug("File fully read");
             }
-            return transactions;
         }
 
-        public static List<Transaction> ReadJson(string fileName)
+        private static List<Transaction> findTransactions(List<Transaction> transactions, string accountName)
         {
-            logger.Debug("Opening file " + fileName);
-            var text = System.IO.File.ReadAllText("C:\\Work\\Training\\SupportBank-2018\\" + fileName);
-            return JsonConvert.DeserializeObject<List<Transaction>>(text);
+            logger.Debug("Looking for transactions matching " + accountName);
+            return transactions.Where(t => t.FromAccount.ToLowerInvariant() == accountName || t.ToAccount.ToLowerInvariant() == accountName).ToList();
         }
 
-        public static List<Transaction> ReadXml(string fileName)
+        private static void listAll(List<Account> accounts)
         {
-            var transactions = new List<Transaction>();
-            var startDate = new DateTime(1900, 1, 1);
-            using (var reader = XmlReader.Create("C:\\Work\\Training\\SupportBank-2018\\" + fileName))
+            logger.Debug("Listing all accounts");
+            foreach (var a in accounts)
             {
-                reader.ReadToDescendant("SupportTransaction");
-                while (reader.Name != "TransactionList")
-                {
-                    reader.MoveToAttribute("Date");
-                    var dateInt = int.Parse(reader.Value);
-                    var date = startDate.AddDays(dateInt);
-
-                    reader.Read();
-                    reader.Read();
-                    reader.Read();
-
-                    var narrative = reader.Value;
-
-                    reader.Read();
-                    reader.Read();
-                    reader.Read();
-                    reader.Read();
-
-                    var amount = float.Parse(reader.Value);
-
-                    reader.Read();
-                    reader.Read();
-                    reader.Read();
-                    reader.Read();
-                    reader.Read();
-                    reader.Read();
-
-                    var from = reader.Value;
-
-                    reader.Read();
-                    reader.Read();
-                    reader.Read();
-                    reader.Read();
-
-                    var to = reader.Value;
-
-                    transactions.Add(new Transaction(date, from, to, narrative, amount));
-
-                    reader.Read();
-                    reader.Read();
-                    reader.Read();
-                    reader.Read();
-                    reader.Read();
-                    reader.Read();
-                    reader.Read();
-                }
-                
+                Console.WriteLine(a.ToString());
             }
-            return transactions;
         }
     }
-
-    internal static class AccountProcessor
-    {
-        private static readonly ILogger logger = LogManager.GetCurrentClassLogger();
-
-        public static List<Account> ProcessAccounts(List<Transaction> transactions)
-        {
-            var accounts = new List<Account>();
-            logger.Debug("Starting account processing");
-
-            foreach (var t in transactions)
-            {
-                if (accounts.Find(a => a.Name == t.FromAccount) == null)
-                {
-                    var newAccount = new Account(t.FromAccount);
-                    newAccount.ProcessTransaction(t);
-                    accounts.Add(newAccount);
-                }
-                else
-                {
-                    accounts.Find(a => a.Name == t.FromAccount).ProcessTransaction(t);
-                }
-
-                if (accounts.Find(a => a.Name == t.ToAccount) == null)
-                {
-                    var newAccount = new Account(t.ToAccount);
-                    newAccount.ProcessTransaction(t);
-                    accounts.Add(newAccount);
-                }
-                else
-                {
-                    accounts.Find(a => a.Name == t.ToAccount).ProcessTransaction(t);
-                }
-            }
-            logger.Debug("Finished account processing");
-            return accounts;
-        }
-    }
-    
 }
