@@ -6,6 +6,7 @@ using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Transactions;
+using System.Xml;
 using Newtonsoft.Json;
 using NLog;
 using NLog.Config;
@@ -155,6 +156,11 @@ namespace SupportBank
                 logger.Debug("File detected as json");
                 return ReadJson(fileName);
             }
+            else if (fileName.EndsWith(".xml"))
+            {
+                logger.Debug("File detected as xml");
+                return ReadXml(fileName);
+            }
             else
             {
                 logger.Error("Requested file " + fileName + " is not in a readable format");
@@ -212,6 +218,63 @@ namespace SupportBank
             logger.Debug("Opening file " + fileName);
             var text = System.IO.File.ReadAllText("C:\\Work\\Training\\SupportBank-2018\\" + fileName);
             return JsonConvert.DeserializeObject<List<Transaction>>(text);
+        }
+
+        public static List<Transaction> ReadXml(string fileName)
+        {
+            var transactions = new List<Transaction>();
+            var startDate = new DateTime(1900, 1, 1);
+            using (var reader = XmlReader.Create("C:\\Work\\Training\\SupportBank-2018\\" + fileName))
+            {
+                reader.ReadToDescendant("SupportTransaction");
+                while (reader.Name != "TransactionList")
+                {
+                    reader.MoveToAttribute("Date");
+                    var dateInt = int.Parse(reader.Value);
+                    var date = startDate.AddDays(dateInt);
+
+                    reader.Read();
+                    reader.Read();
+                    reader.Read();
+
+                    var narrative = reader.Value;
+
+                    reader.Read();
+                    reader.Read();
+                    reader.Read();
+                    reader.Read();
+
+                    var amount = float.Parse(reader.Value);
+
+                    reader.Read();
+                    reader.Read();
+                    reader.Read();
+                    reader.Read();
+                    reader.Read();
+                    reader.Read();
+
+                    var from = reader.Value;
+
+                    reader.Read();
+                    reader.Read();
+                    reader.Read();
+                    reader.Read();
+
+                    var to = reader.Value;
+
+                    transactions.Add(new Transaction(date, from, to, narrative, amount));
+
+                    reader.Read();
+                    reader.Read();
+                    reader.Read();
+                    reader.Read();
+                    reader.Read();
+                    reader.Read();
+                    reader.Read();
+                }
+                
+            }
+            return transactions;
         }
     }
 
